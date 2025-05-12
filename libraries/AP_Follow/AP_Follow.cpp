@@ -417,10 +417,10 @@ void AP_Follow::handle_msg(const mavlink_message_t &msg)
 // @Field: LonE: Vehicle longitude
 // @Field: AltE: Vehicle absolute altitude
         AP::logger().WriteStreaming("FOLL",
-                                               "TimeUS,Lat,Lon,Alt,VelN,VelE,VelD,LatE,LonE,AltE",  // labels
-                                               "sDUmnnnDUm",    // units
-                                               "F--B000--B",    // mults
-                                               "QLLifffLLi",    // fmt
+                                               "TimeUS,Lat,Lon,Alt,VelN,VelE,VelD,LatE,LonE,AltE,FollowTimeMS",  // labels
+                                               "sDUmnnnDUmU",    // units
+                                               "F--B000--BB",    // mults
+                                               "QLLifffLLiL",    // fmt
                                                AP_HAL::micros64(),
                                                _target_location.lat,
                                                _target_location.lng,
@@ -430,7 +430,8 @@ void AP_Follow::handle_msg(const mavlink_message_t &msg)
                                                (double)_target_velocity_ned.z,
                                                loc_estimate.lat,
                                                loc_estimate.lng,
-                                               loc_estimate.alt
+                                               loc_estimate.alt,
+                                               follow_time_ms
                                                );
 #endif
     }
@@ -525,8 +526,9 @@ bool AP_Follow::have_target(void) const
         return false;
     }
 
-    uint32_t follow_time_ms = AP_HAL::millis() - _last_location_update_ms;
+    follow_time_ms = AP_HAL::millis() - _last_location_update_ms;
     gcs().send_text(MAV_SEVERITY_INFO, "follow_time_ms=%d", (int)follow_time_ms);
+    gcs().send_text(MAV_SEVERITY_INFO, "_last_location_update_ms=%d", (int)_last_location_update_ms);
 
     // check for timeout
     if ((_last_location_update_ms == 0) || (follow_time_ms > AP_FOLLOW_TIMEOUT_MS)) {

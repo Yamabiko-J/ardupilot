@@ -30,6 +30,7 @@ class AP_Follow
 {
 
 public:
+    mutable uint32_t follow_time_ms;
 
     // enum for FOLLOW_OPTIONS parameter
     enum class Option {
