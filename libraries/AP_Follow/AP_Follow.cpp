@@ -525,8 +525,11 @@ bool AP_Follow::have_target(void) const
         return false;
     }
 
+    uint32_t follow_time_ms = AP_HAL::millis() - _last_location_update_ms;
+    gcs().send_text(MAV_SEVERITY_INFO, "follow_time_ms=%d", (int)follow_time_ms);
+
     // check for timeout
-    if ((_last_location_update_ms == 0) || (AP_HAL::millis() - _last_location_update_ms > AP_FOLLOW_TIMEOUT_MS)) {
+    if ((_last_location_update_ms == 0) || (follow_time_ms > AP_FOLLOW_TIMEOUT_MS)) {
         return false;
     }
     return true;
