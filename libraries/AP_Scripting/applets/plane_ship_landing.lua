@@ -39,7 +39,7 @@ function bind_add_param(name, idx, default_value)
 end
 
 -- setup SHIP specific parameters
-assert(param:add_table(PARAM_TABLE_KEY, PARAM_TABLE_PREFIX, 3), 'could not add param table')
+assert(param:add_table(PARAM_TABLE_KEY, PARAM_TABLE_PREFIX, 4), 'could not add param table')
 --[[
   // @Param: SHIP_ENABLE
   // @DisplayName: Ship landing enable
@@ -67,6 +67,8 @@ SHIP_LAND_ANGLE = bind_add_param('LAND_ANGLE', 2, 0)
   // @User: Standard
 --]]
 SHIP_AUTO_OFS   = bind_add_param('AUTO_OFS', 3, 0)
+
+ABF_ENABLE     = bind_add_param('ABF_ENABLE', 4, 0)
 
 -- other parameters
 RCMAP_THROTTLE  = bind_param("RCMAP_THROTTLE")
@@ -103,6 +105,10 @@ local vehicle_mode = MODE_MANUAL
 local reached_alt = false
 local throttle_pos = THROTTLE_HIGH
 local have_target = false
+
+local dt = 0.05                     -- 20Hz
+local alpha, beta = 0.01, 0.01
+local z, v = 0, 0
 
 -- square a variable
 function sq(v)
@@ -424,6 +430,16 @@ function update()
    update_mode()
    update_alt()
    update_auto_offset()
+
+if ABF_ENABLE:get() > 0 then
+   local meas = target_pos:alt()*0.01
+   z = z + v*dt
+   local e = meas - z
+   z = z + alpha * e
+   v = v + (beta / dt) * e
+   target_pos:alt(math.floor(z*100))
+   logger.write('ABF','z,v,meas','fff', z, v, meas)
+end
 
    ahrs:set_home(target_pos)
 

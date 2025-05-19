@@ -107,7 +107,7 @@ local throttle_pos = THROTTLE_HIGH
 local have_target = false
 
 local dt = 0.05                     -- 20Hz
-local alpha, beta = 0.7, 0.2
+local alpha, beta = 0.01, 0.01
 local z, v = 0, 0
 
 -- square a variable
@@ -432,12 +432,12 @@ function update()
    update_auto_offset()
 
 if ABF_ENABLE:get() > 0 then
-   local meas = target_pos:alt()
+   local meas = target_pos:alt()*0.01
    z = z + v*dt
    local e = meas - z
    z = z + alpha * e
    v = v + (beta / dt) * e
-   target_pos:alt(math.floor(z))
+   target_pos:alt(math.floor(z*100))
    logger.write('ABF','z,v,meas','fff', z, v, meas)
 end
 
