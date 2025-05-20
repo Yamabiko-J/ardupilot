@@ -107,8 +107,9 @@ local throttle_pos = THROTTLE_HIGH
 local have_target = false
 
 local dt = 0.05                     -- 20Hz
-local alpha, beta = 0.01, 0.01
+local alpha, beta = 0.7, 0.2
 local z, v = 0, 0
+local abf_open = false
 
 -- square a variable
 function sq(v)
@@ -346,6 +347,22 @@ function update_target()
    have_target = true
 
    target_pos, target_velocity = follow:get_target_location_and_velocity_ofs()
+
+   local meas = target_pos:alt()
+   if ABF_ENABLE:get() >= 0.5 then
+      if not abf_open then
+         gcs:send_text(MAV_SEVERITY.INFO, string.format("Alpha-Beta Filter on, ABF_ENABLE = %.2f", ABF_ENABLE:get()))
+         abf_open = true
+      end
+      z = z + v*dt
+      local e = meas - z
+      z = z + alpha * e
+      v = v + (beta / dt) * e
+      target_pos:alt(math.floor(z))
+   end
+
+   logger.write('ABF','z,v,meas','fff', z, v, meas)
+
    target_pos:change_alt_frame(ALT_FRAME_ABSOLUTE)
    target_heading = follow:get_target_heading_deg()
    -- zero vertical velocity to reduce impact of ship movement
@@ -430,16 +447,6 @@ function update()
    update_mode()
    update_alt()
    update_auto_offset()
-
-if ABF_ENABLE:get() > 0 then
-   local meas = target_pos:alt()*0.01
-   z = z + v*dt
-   local e = meas - z
-   z = z + alpha * e
-   v = v + (beta / dt) * e
-   target_pos:alt(math.floor(z*100))
-   logger.write('ABF','z,v,meas','fff', z, v, meas)
-end
 
    ahrs:set_home(target_pos)
 
