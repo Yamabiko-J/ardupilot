@@ -39,7 +39,7 @@ function bind_add_param(name, idx, default_value)
 end
 
 -- setup SHIP specific parameters
-assert(param:add_table(PARAM_TABLE_KEY, PARAM_TABLE_PREFIX, 3), 'could not add param table')
+assert(param:add_table(PARAM_TABLE_KEY, PARAM_TABLE_PREFIX, 5), 'could not add param table')
 --[[
   // @Param: SHIP_ENABLE
   // @DisplayName: Ship landing enable
@@ -68,6 +68,10 @@ SHIP_LAND_ANGLE = bind_add_param('LAND_ANGLE', 2, 0)
 --]]
 SHIP_AUTO_OFS   = bind_add_param('AUTO_OFS', 3, 0)
 
+SHIP_MOD_CODE = bind_add_param('MOD_CODE', 4, 0)
+
+SHIP_POS2_FLAG = bind_add_param('POS2_FLAG', 5, 0)
+
 -- other parameters
 RCMAP_THROTTLE  = bind_param("RCMAP_THROTTLE")
 RTL_ALTITUDE    = bind_param("RTL_ALTITUDE")
@@ -90,6 +94,7 @@ local target_pos = Location()
 local current_pos = Location()
 local target_velocity = Vector3f()
 local target_heading = 0.0
+local home_alt = ahrs:get_home():alt()
 
 -- landing stages
 local STAGE_HOLDOFF = 0
@@ -103,6 +108,7 @@ local vehicle_mode = MODE_MANUAL
 local reached_alt = false
 local throttle_pos = THROTTLE_HIGH
 local have_target = false
+local in_vtol_land = false
 
 -- square a variable
 function sq(v)
@@ -304,6 +310,7 @@ function check_approach_abort()
       gcs:send_text(MAV_SEVERITY.NOTICE, "Aborting landing")
       landing_stage = STAGE_HOLDOFF
       vehicle:set_mode(MODE_RTL)
+      in_vtol_land = false
    end
 end
 
@@ -317,9 +324,11 @@ function update_mode()
    if mode == MODE_RTL then
       landing_stage = STAGE_HOLDOFF
       reached_alt = false
+      in_vtol_land = false
    elseif mode ~= MODE_QRTL then
       landing_stage = STAGE_IDLE
       reached_alt = false
+      in_vtol_land = false
    end
 end
 
@@ -425,7 +434,21 @@ function update()
    update_alt()
    update_auto_offset()
 
-   ahrs:set_home(target_pos)
+   if SHIP_MOD_CODE:get() > 0.5 then
+      if vehicle_mode == MODE_RTL or (vehicle_mode == MODE_QRTL and not in_vtol_land) then
+         local new_home = target_pos:copy()
+         new_home:alt(home_alt)
+         ahrs:set_home(new_home)
+      elseif in_vtol_land then
+         ahrs:set_home(target_pos)
+         home_alt = target_pos:alt()
+      else
+         home_alt = ahrs:get_home():alt()
+      end
+      logger.write('SHME','hmealt','f',home_alt)
+   else
+      ahrs:set_home(target_pos)
+   end
 
    next_WP:change_alt_frame(ALT_FRAME_ABSOLUTE)
 
@@ -443,6 +466,11 @@ function update()
       vehicle:set_velocity_match(target_velocity:xy())
       target_pos:alt(next_WP:alt())
       vehicle:update_target_location(next_WP, target_pos)
+
+      if SHIP_POS2_FLAG:get() > 0.5 then
+         SHIP_POS2_FLAG:set_and_save(0)
+         in_vtol_land = true
+      end
 
       if throttle_pos == THROTTLE_HIGH then
          check_approach_abort()

@@ -192,6 +192,10 @@ public:
     // Get pilot throttle input with deadzone, this will return 50% throttle in failsafe!
     float get_throttle_input() const;
 
+#if AP_SCRIPTING_ENABLED
+    void inform_reached_position2(void){AP_Param::set_and_save_by_name("SHIP_POS2_FLAG", 1.0f);};
+#endif
+
 private:
     AP_AHRS &ahrs;
 

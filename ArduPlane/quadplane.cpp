@@ -2760,6 +2760,11 @@ void QuadPlane::vtol_position_controller(void)
             gcs().send_text(MAV_SEVERITY_INFO,"VTOL position2 started v=%.1f d=%.1f h=%.1f",
                             (double)ahrs.groundspeed(), (double)plane.auto_state.wp_distance,
                             plane.relative_ground_altitude(plane.g.rangefinder_landing));
+
+#if AP_SCRIPTING_ENABLED
+            inform_reached_position2();
+#endif
+
         }
         break;
     }
